@@ -4,14 +4,6 @@
  * CSE 4344 (Network concepts), Prof. Zeigler
  * University of Texas at Arlington
  */
-/* This program compiles for Sparc Solaris 2.6.
- * To compile for Linux:
- *  1) Comment out the #include <pthread.h> line.
- *  2) Comment out the line that defines the variable newthread.
- *  3) Comment out the two lines that run pthread_create().
- *  4) Uncomment the line that runs accept_request().
- *  5) Remove -lsocket from the Makefile.
- */
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -34,7 +26,7 @@
 #define STDOUT  1
 #define STDERR  2
 
-void accept_request(void *);
+void* accept_request(void *);
 void bad_request(int);
 void cat(int, FILE *);
 void cannot_execute(int);
@@ -52,7 +44,7 @@ void unimplemented(int);
  * return.  Process the request appropriately.
  * Parameters: the socket connected to the client */
 /**********************************************************************/
-void accept_request(void *arg)
+void* accept_request(void *arg)
 {
     int client = (intptr_t)arg;
     char buf[1024];
@@ -79,7 +71,7 @@ void accept_request(void *arg)
     if (strcasecmp(method, "GET") && strcasecmp(method, "POST"))
     {
         unimplemented(client);
-        return;
+        return NULL;
     }
 
     if (strcasecmp(method, "POST") == 0)
@@ -131,6 +123,7 @@ void accept_request(void *arg)
     }
 
     close(client);
+    return NULL;
 }
 
 /**********************************************************************/
@@ -428,7 +421,7 @@ void serve_file(int client, const char *filename)
 /**********************************************************************/
 int startup(u_short *port)
 {
-    int httpd = 0;
+    socklen_t httpd = 0;
     int on = 1;
     struct sockaddr_in name;
 
@@ -506,7 +499,7 @@ int main(void)
         if (client_sock == -1)
             error_die("accept");
         /* accept_request(&client_sock); */
-        if (pthread_create(&newthread , NULL, (void *)accept_request, (void *)(intptr_t)client_sock) != 0)
+        if (pthread_create(&newthread , NULL, accept_request, (void *)(intptr_t)client_sock) != 0)
             perror("pthread_create");
     }
 
