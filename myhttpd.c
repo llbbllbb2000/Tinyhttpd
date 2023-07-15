@@ -74,81 +74,87 @@ int main()
         return -1;
     }
 
-    listen(serv_sock, 10);
+    if (listen(serv_sock, 10) < 0) {
+        printf("error listen!\n");
+        return -1;
+    }
     printf("myhttpd is running on port %d\n", PORT);
 
     int client_sock;
     struct sockaddr_in client_addr;
     socklen_t client_addr_size = sizeof(client_addr);
 
-    char buf[1024];//, file[1024];
+    char buf[1024], path[128];
 
     while (1)
     {
         client_sock = accept(serv_sock, (struct sockaddr*) &client_addr, &client_addr_size);
 
-        read(client_sock, buf, sizeof(buf));
-        printf("%s", buf);
-        // printf("client_sock: %d\n", client_sock);
+        // read(client_sock, buf, sizeof(buf));
+        // printf("----------REQUEST----------\n\n");
+        // printf("%s", buf);
+        // printf("---------------------------\n\n");
 
-        // char method[16], url[256], version[16];
-        // FILE* fp = fdopen(client_sock, "r");
-        // if (!fp) {
-        //     not_found(client_sock);
-        //     printf("not found\n");
-        //     return -1;
-        // }
+        char method[16], url[64], version[16];
+        FILE* fp = fdopen(client_sock, "r");
+        if (!fp) {
+            not_found(client_sock);
+            printf("not found\n");
+            return -1;
+        }
 
-        // if ( fgets(buf, sizeof(buf), fp) == NULL) {
-        //     not_found(client_sock);
-        //     printf("error read\n");
-        //     return -1;
-        // }
-        // fclose(fp);
-        // // printf("%s\n", buf);
+        if ( fgets(buf, sizeof(buf), fp) == NULL) {
+            not_found(client_sock);
+            printf("error read\n");
+            return -1;
+        }
+        // printf("%s\n", buf);
         
-        // if ( sscanf(buf, "%s %s %s\n", method, url, version) == EOF) {
-        //     not_found(client_sock);
-        //     printf("error read 2\n");
-        //     return -1;
-        // }
+        if ( sscanf(buf, "%s %s %s\n", method, url, version) == EOF) {
+            not_found(client_sock);
+            printf("error read 2\n");
+            return -1;
+        }
 
-        // if (strcasecmp(method, "GET") != 0) {
-        //     unimplemented(client_sock);
-        //     printf("unimplemented method\n");
-        //     return -1;
-        // }
+        if (strcasecmp(method, "GET") != 0) {
+            unimplemented(client_sock);
+            printf("unimplemented method\n");
+            return -1;
+        }
 
-        // int num = strlen(url);
-        // if (url[num - 1] == '/') {
-        //     strcat(url, "index.html");
-        // }
-        // sprintf(file, "htdocs%s", url);
-        // // printf("%s\n", file);
+        int num = strlen(url);
+        if (url[num - 1] == '/') {
+            strcat(url, "index.html");
+        }
+        sprintf(path, "htdocs%s", url);
 
-        // sprintf(buf, "HTTP/1.0 200 OK\r\n");
-        // printf("%s", buf);
-        // send(client_sock, buf, strlen(buf), 0);
-        // sprintf(buf, "Server: myhttpd/0.1.0\r\n");
-        // printf("%s", buf);
-        // send(client_sock, buf, strlen(buf), 0);
-        // sprintf(buf, "Content-Type: text/html\r\n");
-        // printf("%s", buf);
-        // send(client_sock, buf, strlen(buf), 0);
-        // sprintf(buf, "\r\n");
-        // printf("%s", buf);
-        // send(client_sock, buf, strlen(buf), 0);
-        // printf("----");
+        sprintf(buf, "HTTP/1.0 200 OK\r\n");
+        printf("------------\n%s", buf);
+        send(client_sock, buf, strlen(buf), 0);
+        sprintf(buf, "Server: myhttpd/0.1.0\r\n");
+        printf("%s", buf);
+        send(client_sock, buf, strlen(buf), 0);
+        sprintf(buf, "Content-Type: text/html\r\n");
+        printf("%s", buf);
+        send(client_sock, buf, strlen(buf), 0);
+        sprintf(buf, "\r\n");
+        printf("%s", buf);
+        send(client_sock, buf, strlen(buf), 0);
 
-        // FILE* resource = fopen(url, "r");
-        // printf("----");
-        // while ( fgets(buf, sizeof(buf), resource) != NULL) {
-        //     printf("%s\n", buf);
-        //     send(client_sock, buf, strlen(buf), 0);
-        // }
+        printf("%s\n", path);
+        FILE* resource = fopen(path, "r");
+        if (resource == NULL) {
+            not_found(client_sock);
+            return -1;
+        }
+        while ( fgets(buf, sizeof(buf), resource) != NULL) {
+            printf("%s\n", buf);
+            send(client_sock, buf, strlen(buf), 0);
+        }
 
+        fclose(fp);
+        fclose(resource);
         close(client_sock);
-        // fclose(resource);
     }
 
     close(serv_sock);
